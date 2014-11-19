@@ -43,10 +43,7 @@ class RemoteForm(object):
         self.excluded_fields |= (self.included_fields - self.all_fields)
 
         if not self.ordered_fields:
-            if self.form.fields.keyOrder:
-                self.ordered_fields = self.form.fields.keyOrder
-            else:
-                self.ordered_fields = self.form.fields.keys()
+            self.ordered_fields = self.form.fields.keys()
 
         self.fields = []
 
@@ -72,7 +69,7 @@ class RemoteForm(object):
             logger.warning('Following fieldset fields are excluded %s' % (fieldset_fields - set(self.fields)))
             self.fieldsets = {}
 
-    def as_dict(self):
+    def as_dict(self, field_names=None, extra=('fieldsets', 'ordered_fields',), get_help_text=None):
         """
         Returns a form as a dictionary that looks like the following:
 
@@ -107,14 +104,20 @@ class RemoteForm(object):
         form_dict['prefix'] = self.form.prefix
         form_dict['fields'] = SortedDict()
         form_dict['errors'] = self.form.errors
-        form_dict['fieldsets'] = getattr(self.form, 'fieldsets', [])
+        if 'fieldsets' in extra:
+            form_dict['fieldsets'] = getattr(self.form, 'fieldsets', [])
 
         # If there are no fieldsets, specify order
-        form_dict['ordered_fields'] = self.fields
+        if 'ordered_fields' in extra:
+            form_dict['ordered_fields'] = self.fields
 
         initial_data = {}
 
-        for name, field in [(x, self.form.fields[x]) for x in self.fields]:
+        field_names = self.fields if field_names is None else field_names
+
+        for name, field in [(x, self.form.fields.get(x)) for x in field_names]:
+            if x is None:
+                continue
             # Retrieve the initial data from the form itself if it exists so
             # that we properly handle which initial data should be returned in
             # the dictionary.
@@ -138,6 +141,9 @@ class RemoteForm(object):
 
             if name in self.readonly_fields:
                 field_dict['readonly'] = True
+
+            if get_help_text is not None:
+                field_dict['help_text'] = get_help_text('product', name)
 
             form_dict['fields'][name] = field_dict
 

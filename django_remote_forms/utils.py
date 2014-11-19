@@ -2,10 +2,10 @@ from django.utils.functional import Promise
 from django.utils.encoding import force_unicode
 
 
-def resolve_promise(o):
+def resolve_promise(o, initial=None):
     if isinstance(o, dict):
         for k, v in o.items():
-            o[k] = resolve_promise(v)
+            o[k] = resolve_promise(v, initial=o.get('initial'))
     elif isinstance(o, (list, tuple)):
         o = [resolve_promise(x) for x in o]
     elif isinstance(o, Promise):
@@ -18,6 +18,9 @@ def resolve_promise(o):
             except:
                 raise Exception('Unable to resolve lazy object %s' % o)
     elif callable(o):
-        o = o()
+        try:
+            o = o(initial)
+        except TypeError:
+            o = o()
 
     return o
